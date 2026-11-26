@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.user.repository
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.domain.user.model.StudentNumber
 import io.github.mrjimin.invest.domain.user.model.User
 import io.github.mrjimin.invest.domain.user.model.toStudentNumber
@@ -12,46 +13,47 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 
 class UserRepositoryImpl : UserRepository {
 
-    override fun findAll(): List<User> =
-        Users.selectAll()
-            .map { it.toUser() }
+    override fun findAll(): List<User> = withTransaction {
+        Users.selectAll().map { it.toUser() }
+    }
 
-    override fun findById(id: Long): User? =
+    override fun findById(id: Long): User? = withTransaction {
         findByIdInternal(id)
+    }
 
-    override fun findByUsername(username: String): User? =
+    override fun findByUsername(username: String): User? = withTransaction {
         Users.selectAll()
             .where { Users.username eq username }
             .singleOrNull()
             ?.toUser()
+    }
 
-    override fun findByStudentNumber(
-        studentNumber: StudentNumber
-    ): User? =
+    override fun findByStudentNumber(studentNumber: StudentNumber): User? = withTransaction {
         Users.selectAll()
             .where {
                 Users.studentNumber eq studentNumber.value
             }
             .singleOrNull()
             ?.toUser()
+    }
 
-    override fun existsByUsername(username: String): Boolean =
+    override fun existsByUsername(username: String): Boolean = withTransaction {
         Users.selectAll()
             .where { Users.username eq username }
             .limit(1)
             .any()
+    }
 
-    override fun existsByStudentNumber(
-        studentNumber: StudentNumber
-    ): Boolean =
+    override fun existsByStudentNumber(studentNumber: StudentNumber): Boolean = withTransaction {
         Users.selectAll()
             .where {
                 Users.studentNumber eq studentNumber.value
             }
             .limit(1)
             .any()
+    }
 
-    override fun save(user: User): User {
+    override fun save(user: User): User = withTransaction {
         val userId = Users.insertAndGetId {
             it[username] = user.username
             it[password] = user.password
@@ -63,14 +65,13 @@ class UserRepositoryImpl : UserRepository {
             it[updatedAt] = user.updatedAt
         }.value
 
-        return findByIdInternal(userId)
+        findByIdInternal(userId)
             ?: error("생성된 사용자를 조회할 수 없습니다.")
     }
 
-    override fun deleteById(id: Long): Boolean =
-        Users.deleteWhere {
-            Users.id eq id
-        } > 0
+    override fun deleteById(id: Long): Boolean = withTransaction {
+        Users.deleteWhere { Users.id eq id } > 0
+    }
 
     private fun findByIdInternal(id: Long): User? =
         Users.selectAll()

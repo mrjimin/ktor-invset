@@ -2,22 +2,16 @@ package io.github.mrjimin.invest.domain.trading.route
 
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
-import io.github.mrjimin.invest.common.extension.jwtPrincipal
 import io.github.mrjimin.invest.common.response.ApiResponse
 import io.github.mrjimin.invest.common.security.role.authorized
 import io.github.mrjimin.invest.common.time.TimeProvider
 import io.github.mrjimin.invest.domain.trading.service.OrderService
 import io.github.mrjimin.invest.domain.user.model.UserRole
-import io.github.mrjimin.invest.plugin.JWT_AUTH
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.principal
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 @Serializable
@@ -46,9 +40,11 @@ fun Route.orderAdminRoute(
             post("/time") {
                 val request = call.receive<SetTimeRequest>()
                 val parsed = try {
-                    request.kstIsoTime?.let {
-                        ZonedDateTime.parse(it)
-                    }
+                    request.kstIsoTime
+                        ?.let { ZonedDateTime.parse(it) }
+                        ?.withZoneSameInstant(
+                            ZoneId.of("Asia/Seoul")
+                        )
                 } catch (_: Exception) {
                     throw ApiException(
                         ApiErrorCode.INVALID_REQUEST,

@@ -17,7 +17,7 @@ class HoldingRepositoryImpl : HoldingRepository {
     override fun findByUserAndStockForUpdate(
         userId: Long,
         stockId: Long
-    ): Holding? =
+    ): Holding? = withTransaction {
         Holdings.selectAll()
             .where {
                 (Holdings.userId eq userId) and
@@ -26,44 +26,50 @@ class HoldingRepositoryImpl : HoldingRepository {
             .forUpdate()
             .singleOrNull()
             ?.toHolding()
+    }
 
     override fun findAllByUserId(userId: Long): List<Holding> =
-        Holdings.selectAll()
-            .where { Holdings.userId eq userId }
-            .map { it.toHolding() }
+        withTransaction {
+            Holdings.selectAll()
+                .where { Holdings.userId eq userId }
+                .map { it.toHolding() }
+        }
 
-    override fun save(holding: Holding): Holding {
-        val id = Holdings.insertAndGetId {
-            it[userId] = holding.userId
-            it[stockId] = holding.stockId
-            it[quantity] = holding.quantity
-            it[averagePrice] = holding.averagePrice
-            it[updatedAt] = holding.updatedAt
-        }.value
+    override fun save(holding: Holding): Holding =
+        withTransaction {
+            val id = Holdings.insertAndGetId {
+                it[userId] = holding.userId
+                it[stockId] = holding.stockId
+                it[quantity] = holding.quantity
+                it[averagePrice] = holding.averagePrice
+                it[updatedAt] = holding.updatedAt
+            }.value
 
-        return holding.copy(id = id)
-    }
+            holding.copy(id = id)
+        }
 
     override fun update(
         id: Long,
         quantity: Int,
         averagePrice: Long,
         updatedAt: LocalDateTime
-    ): Boolean =
+    ): Boolean = withTransaction {
         Holdings.update({ Holdings.id eq id }) {
             it[Holdings.quantity] = quantity
             it[Holdings.averagePrice] = averagePrice
             it[Holdings.updatedAt] = updatedAt
         } > 0
+    }
 
     override fun deleteByUserAndStock(
         userId: Long,
         stockId: Long
-    ): Boolean =
+    ): Boolean = withTransaction {
         Holdings.deleteWhere {
             (Holdings.userId eq userId) and
                     (Holdings.stockId eq stockId)
         } > 0
+    }
 
     private fun ResultRow.toHolding() = Holding(
         id = this[Holdings.id].value,

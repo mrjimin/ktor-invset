@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.trading.repository
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.domain.trading.model.Order
 import io.github.mrjimin.invest.domain.trading.model.OrderSide
 import io.github.mrjimin.invest.domain.trading.model.OrderStatus
@@ -14,43 +15,50 @@ import org.jetbrains.exposed.v1.jdbc.update
 
 class OrderRepositoryImpl : OrderRepository {
 
-    override fun save(order: Order): Order {
-        val id = Orders.insertAndGetId {
-            it[userId] = order.userId
-            it[stockId] = order.stockId
-            it[side] = order.side
-            it[quantity] = order.quantity
-            it[requestedPrice] = order.requestedPrice
-            it[executedPrice] = order.executedPrice
-            it[status] = order.status
-            it[createdAt] = order.createdAt
-            it[executedAt] = order.executedAt
-        }.value
+    override fun save(order: Order): Order =
+        withTransaction {
+            val id = Orders.insertAndGetId {
+                it[userId] = order.userId
+                it[stockId] = order.stockId
+                it[side] = order.side
+                it[quantity] = order.quantity
+                it[requestedPrice] = order.requestedPrice
+                it[executedPrice] = order.executedPrice
+                it[status] = order.status
+                it[createdAt] = order.createdAt
+                it[executedAt] = order.executedAt
+            }.value
 
-        return order.copy(id = id)
-    }
+            order.copy(id = id)
+        }
 
     override fun findByIdForUpdate(id: Long): Order? =
-        Orders.selectAll()
-            .where { Orders.id eq id }
-            .forUpdate()
-            .singleOrNull()
-            ?.toOrder()
+        withTransaction {
+            Orders.selectAll()
+                .where { Orders.id eq id }
+                .forUpdate()
+                .singleOrNull()
+                ?.toOrder()
+        }
 
     override fun findAllByUserId(userId: Long): List<Order> =
-        Orders.selectAll()
-            .where { Orders.userId eq userId }
-            .map { it.toOrder() }
+        withTransaction {
+            Orders.selectAll()
+                .where { Orders.userId eq userId }
+                .map { it.toOrder() }
+        }
 
     override fun findPendingOrderIds(): List<Long> =
-        Orders.selectAll()
-            .where { Orders.status eq OrderStatus.PENDING }
-            .map { it[Orders.id].value }
+        withTransaction {
+            Orders.selectAll()
+                .where { Orders.status eq OrderStatus.PENDING }
+                .map { it[Orders.id].value }
+        }
 
     override fun sumPendingSellQuantity(
         userId: Long,
         stockId: Long
-    ): Int =
+    ): Int = withTransaction {
         Orders.selectAll()
             .where {
                 (Orders.userId eq userId) and
@@ -59,13 +67,14 @@ class OrderRepositoryImpl : OrderRepository {
                         (Orders.status eq OrderStatus.PENDING)
             }
             .sumOf { it[Orders.quantity] }
+    }
 
     override fun updateStatus(
         id: Long,
         status: OrderStatus,
         executedPrice: Long?,
         executedAt: LocalDateTime
-    ): Boolean =
+    ): Boolean = withTransaction {
         Orders.update({
             (Orders.id eq id) and
                     (Orders.status eq OrderStatus.PENDING)
@@ -74,6 +83,7 @@ class OrderRepositoryImpl : OrderRepository {
             it[Orders.executedPrice] = executedPrice
             it[Orders.executedAt] = executedAt
         } > 0
+    }
 
     private fun ResultRow.toOrder() = Order(
         id = this[Orders.id].value,

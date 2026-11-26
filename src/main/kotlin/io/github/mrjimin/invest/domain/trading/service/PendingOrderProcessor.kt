@@ -29,15 +29,13 @@ internal class PendingOrderProcessor(
     fun executePendingOrders(): Int {
         if (!tradingCalendar.isMarketOpen()) return 0
 
-        val now = timeProvider.nowUtc()
-
         val pendingOrderIds = withTransaction {
             orderRepository.findPendingOrderIds()
         }
 
         return pendingOrderIds.count { orderId ->
             withTransaction {
-                executeOrder(orderId, now)
+                executeOrder(orderId, timeProvider.nowUtc())
             }
         }
     }
@@ -52,10 +50,11 @@ internal class PendingOrderProcessor(
         if (order.status != OrderStatus.PENDING) return false
 
         val account = accountRepository.findByUserIdForUpdate(order.userId)
-            ?: return false
+            ?: error("주문 계좌를 찾을 수 없습니다. orderId=${order.id}")
 
         val requestedTotal = calculateTotal(
-            order.requestedPrice, order.quantity
+            order.requestedPrice,
+            order.quantity
         )
 
         val stock = stockRepository.findById(order.stockId)
@@ -70,11 +69,20 @@ internal class PendingOrderProcessor(
 
         return when (order.side) {
             OrderSide.BUY -> executeBuy(
-                order, account, price, actualTotal, requestedTotal, now
+                order = order,
+                account = account,
+                price = price,
+                actualTotal = actualTotal,
+                requestedTotal = requestedTotal,
+                now = now
             )
 
             OrderSide.SELL -> executeSell(
-                order, account, price, actualTotal, requestedTotal, now
+                order = order,
+                account = account,
+                price = price,
+                actualTotal = actualTotal,
+                now = now
             )
         }
     }
@@ -87,31 +95,56 @@ internal class PendingOrderProcessor(
         requestedTotal: Long,
         now: LocalDateTime
     ): Boolean {
-        val newReserved = (
-                account.reservedBalance - requestedTotal
-                ).coerceAtLeast(0L)
+        val newReserved = releaseReservedBalance(
+            account = account,
+            amount = requestedTotal,
+            orderId = order.id
+        )
 
-        if (account.balance - newReserved < actualTotal) {
-            rejectOrder(order, account, requestedTotal, now)
+        val availableBalance = Math.subtractExact(
+            account.balance,
+            newReserved
+        )
+
+        if (availableBalance < actualTotal) {
+            rejectOrder(
+                order,
+                account,
+                requestedTotal,
+                now
+            )
             return false
         }
 
         check(
             accountRepository.updateBalances(
-                account.userId,
-                Math.subtractExact(account.balance, actualTotal),
-                newReserved,
-                now
+                userId = account.userId,
+                balance = Math.subtractExact(
+                    account.balance,
+                    actualTotal
+                ),
+                reservedBalance = newReserved,
+                updatedAt = now
             )
         ) {
-            "매수 체결 계좌 갱신에 실패했습니다."
+            "매수 체결 계좌 갱신에 실패했습니다. orderId=${order.id}"
         }
 
         holdingProcessor.buy(
-            order.userId, order.stockId, order.quantity, price, now
+            userId = order.userId,
+            stockId = order.stockId,
+            quantity = order.quantity,
+            price = price,
+            now = now
         )
 
-        completeOrder(order, price, actualTotal, now)
+        completeOrder(
+            order = order,
+            price = price,
+            totalAmount = actualTotal,
+            now = now
+        )
+
         return true
     }
 
@@ -120,32 +153,50 @@ internal class PendingOrderProcessor(
         account: Account,
         price: Long,
         actualTotal: Long,
-        requestedTotal: Long,
         now: LocalDateTime
     ): Boolean {
         val holding = holdingRepository.findByUserAndStockForUpdate(
-            order.userId, order.stockId
+            order.userId,
+            order.stockId
         )
 
         if (holding == null || holding.quantity < order.quantity) {
-            rejectOrder(order, account, requestedTotal, now)
+            rejectOrder(
+                order,
+                account,
+                requestedTotal = 0L,
+                now
+            )
             return false
         }
 
-        holdingProcessor.sell(holding, order.quantity, now)
+        holdingProcessor.sell(
+            holding = holding,
+            quantity = order.quantity,
+            now = now
+        )
 
         check(
             accountRepository.updateBalances(
-                account.userId,
-                Math.addExact(account.balance, actualTotal),
-                account.reservedBalance,
-                now
+                userId = account.userId,
+                balance = Math.addExact(
+                    account.balance,
+                    actualTotal
+                ),
+                reservedBalance = account.reservedBalance,
+                updatedAt = now
             )
         ) {
-            "매도 체결 계좌 갱신에 실패했습니다."
+            "매도 체결 계좌 갱신에 실패했습니다. orderId=${order.id}"
         }
 
-        completeOrder(order, price, actualTotal, now)
+        completeOrder(
+            order = order,
+            price = price,
+            totalAmount = actualTotal,
+            now = now
+        )
+
         return true
     }
 
@@ -155,11 +206,14 @@ internal class PendingOrderProcessor(
         totalAmount: Long,
         now: LocalDateTime
     ) {
-        val updated = orderRepository.updateStatus(
-            order.id, OrderStatus.FILLED, price, now
-        )
-
-        check(updated) {
+        check(
+            orderRepository.updateStatus(
+                id = order.id,
+                status = OrderStatus.FILLED,
+                executedPrice = price,
+                executedAt = now
+            )
+        ) {
             "주문 상태 변경에 실패했습니다. orderId=${order.id}"
         }
 
@@ -185,34 +239,69 @@ internal class PendingOrderProcessor(
         now: LocalDateTime
     ) {
         if (order.side == OrderSide.BUY) {
-            val newReserved = Math.subtractExact(
-                account.reservedBalance,
-                requestedTotal
+            val newReserved = releaseReservedBalance(
+                account = account,
+                amount = requestedTotal,
+                orderId = order.id
             )
 
             check(
                 accountRepository.updateBalances(
-                    account.userId,
-                    account.balance,
-                    newReserved,
-                    now
+                    userId = account.userId,
+                    balance = account.balance,
+                    reservedBalance = newReserved,
+                    updatedAt = now
                 )
             ) {
-                "주문 예약금 반환에 실패했습니다."
+                "주문 예약금 반환에 실패했습니다. orderId=${order.id}"
             }
         }
 
-        val updated = orderRepository.updateStatus(
-            order.id, OrderStatus.REJECTED, null, now
-        )
-
-        check(updated) {
+        check(
+            orderRepository.updateStatus(
+                id = order.id,
+                status = OrderStatus.REJECTED,
+                executedPrice = null,
+                executedAt = now
+            )
+        ) {
             "주문 거절 처리에 실패했습니다. orderId=${order.id}"
         }
+    }
+
+    private fun releaseReservedBalance(
+        account: Account,
+        amount: Long,
+        orderId: Long
+    ): Long {
+        if (amount < 0L || account.reservedBalance < amount) {
+            error(
+                "예약금이 부족합니다. " +
+                        "userId=${account.userId}, orderId=$orderId"
+            )
+        }
+
+        return Math.subtractExact(
+            account.reservedBalance,
+            amount
+        )
     }
 
     private fun calculateTotal(
         price: Long,
         quantity: Int
-    ): Long = Math.multiplyExact(price, quantity.toLong())
+    ): Long {
+        require(price > 0) {
+            "주가는 0보다 커야 합니다."
+        }
+
+        require(quantity > 0) {
+            "주문 수량은 0보다 커야 합니다."
+        }
+
+        return Math.multiplyExact(
+            price,
+            quantity.toLong()
+        )
+    }
 }

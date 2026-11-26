@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.trading.repository
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.domain.trading.model.Transaction
 import io.github.mrjimin.invest.domain.trading.repository.table.Transactions
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -9,25 +10,29 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 
 class TransactionRepositoryImpl : TransactionRepository {
 
-    override fun save(transaction: Transaction): Transaction {
-        val id = Transactions.insertAndGetId {
-            it[orderId] = transaction.orderId
-            it[userId] = transaction.userId
-            it[stockId] = transaction.stockId
-            it[side] = transaction.side
-            it[quantity] = transaction.quantity
-            it[price] = transaction.price
-            it[totalAmount] = transaction.totalAmount
-            it[createdAt] = transaction.createdAt
-        }.value
+    override fun save(transaction: Transaction): Transaction =
+        withTransaction {
+            val id = Transactions.insertAndGetId {
+                it[orderId] = transaction.orderId
+                it[userId] = transaction.userId
+                it[stockId] = transaction.stockId
+                it[side] = transaction.side
+                it[quantity] = transaction.quantity
+                it[price] = transaction.price
+                it[totalAmount] = transaction.totalAmount
+                it[createdAt] = transaction.createdAt
+            }.value
 
-        return transaction.copy(id = id)
-    }
+            transaction.copy(id = id)
+        }
 
-    override fun findAllByUserId(userId: Long): List<Transaction> =
+    override fun findAllByUserId(
+        userId: Long
+    ): List<Transaction> = withTransaction {
         Transactions.selectAll()
             .where { Transactions.userId eq userId }
             .map { it.toTransaction() }
+    }
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[Transactions.id].value,

@@ -67,7 +67,7 @@ internal class HoldingProcessor(
                 now
             )
         ) {
-            "보유 주식 갱신에 실패했습니다."
+            "보유 주식 갱신에 실패했습니다. holdingId=${existing.id}"
         }
     }
 
@@ -82,7 +82,10 @@ internal class HoldingProcessor(
             throw ApiException(ApiErrorCode.INSUFFICIENT_HOLDINGS)
         }
 
-        val remaining = holding.quantity - quantity
+        val remaining = Math.subtractExact(
+            holding.quantity,
+            quantity
+        )
 
         if (remaining == 0) {
             check(
@@ -91,7 +94,7 @@ internal class HoldingProcessor(
                     holding.stockId
                 )
             ) {
-                "보유 주식 삭제에 실패했습니다."
+                "보유 주식 삭제에 실패했습니다. holdingId=${holding.id}"
             }
             return
         }
@@ -104,7 +107,7 @@ internal class HoldingProcessor(
                 now
             )
         ) {
-            "보유 주식 갱신에 실패했습니다."
+            "보유 주식 갱신에 실패했습니다. holdingId=${holding.id}"
         }
     }
 }

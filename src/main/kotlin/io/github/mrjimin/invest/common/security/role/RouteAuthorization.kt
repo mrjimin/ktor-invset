@@ -3,7 +3,6 @@ package io.github.mrjimin.invest.common.security.role
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
 import io.github.mrjimin.invest.common.extension.jwtPrincipal
-import io.github.mrjimin.invest.common.security.jwt.JwtPrincipal
 import io.github.mrjimin.invest.domain.user.model.UserRole
 import io.github.mrjimin.invest.plugin.JWT_AUTH
 import io.ktor.server.application.*

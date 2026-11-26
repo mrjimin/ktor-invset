@@ -12,6 +12,6 @@ val userModule = module {
     }
 
     single<UserService> {
-        UserServiceImpl(get(), get())
+        UserServiceImpl(get(), get(), get())
     }
 }

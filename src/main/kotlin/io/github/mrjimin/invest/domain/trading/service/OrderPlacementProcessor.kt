@@ -8,10 +8,14 @@ import io.github.mrjimin.invest.domain.account.model.Account
 import io.github.mrjimin.invest.domain.account.repository.AccountRepository
 import io.github.mrjimin.invest.domain.stock.repository.StockRepository
 import io.github.mrjimin.invest.domain.trading.dto.CreateOrderRequest
-import io.github.mrjimin.invest.domain.trading.model.*
+import io.github.mrjimin.invest.domain.trading.model.Order
+import io.github.mrjimin.invest.domain.trading.model.OrderSide
+import io.github.mrjimin.invest.domain.trading.model.OrderStatus
+import io.github.mrjimin.invest.domain.trading.model.Transaction
 import io.github.mrjimin.invest.domain.trading.repository.HoldingRepository
 import io.github.mrjimin.invest.domain.trading.repository.OrderRepository
 import io.github.mrjimin.invest.domain.trading.repository.TransactionRepository
+import kotlinx.datetime.LocalDateTime
 
 internal class OrderPlacementProcessor(
     private val accountRepository: AccountRepository,
@@ -33,7 +37,6 @@ internal class OrderPlacementProcessor(
         val now = timeProvider.nowUtc()
         val isMarketOpen = tradingCalendar.isMarketOpen()
 
-        // 동일 사용자 주문을 직렬화한다.
         val account = accountRepository.findByUserIdForUpdate(userId)
             ?: throw ApiException(ApiErrorCode.ACCOUNT_NOT_FOUND)
 
@@ -77,7 +80,7 @@ internal class OrderPlacementProcessor(
         price: Long,
         totalAmount: Long,
         isMarketOpen: Boolean,
-        now: kotlinx.datetime.LocalDateTime
+        now: LocalDateTime
     ): Order {
 
         if (account.availableBalance < totalAmount) {
@@ -144,7 +147,7 @@ internal class OrderPlacementProcessor(
         price: Long,
         totalAmount: Long,
         isMarketOpen: Boolean,
-        now: kotlinx.datetime.LocalDateTime
+        now: LocalDateTime
     ): Order {
 
         val holding = holdingRepository.findByUserAndStockForUpdate(
@@ -157,12 +160,18 @@ internal class OrderPlacementProcessor(
             stockId
         )
 
-        if (holding.quantity - pendingQuantity < quantity) {
+        val availableQuantity = holding.quantity.toLong() -
+                pendingQuantity.toLong()
+
+        if (availableQuantity < quantity.toLong()) {
             throw ApiException(ApiErrorCode.INSUFFICIENT_HOLDINGS)
         }
 
-        if (isMarketOpen) {
+//        if (holding.quantity - pendingQuantity < quantity) {
+//            throw ApiException(ApiErrorCode.INSUFFICIENT_HOLDINGS)
+//        }
 
+        if (isMarketOpen) {
             holdingProcessor.sell(
                 holding,
                 quantity,
@@ -208,9 +217,8 @@ internal class OrderPlacementProcessor(
         quantity: Int,
         price: Long,
         totalAmount: Long,
-        now: kotlinx.datetime.LocalDateTime
+        now: LocalDateTime
     ): Order {
-
         val order = orderRepository.save(
             Order(
                 id = 0L,
@@ -249,7 +257,7 @@ internal class OrderPlacementProcessor(
         side: OrderSide,
         quantity: Int,
         price: Long,
-        now: kotlinx.datetime.LocalDateTime
+        now: LocalDateTime
     ): Order = orderRepository.save(
         Order(
             id = 0L,

@@ -6,7 +6,6 @@ import io.github.mrjimin.invest.common.security.role.authenticated
 import io.github.mrjimin.invest.common.time.TimeProvider
 import io.github.mrjimin.invest.domain.trading.dto.CreateOrderRequest
 import io.github.mrjimin.invest.domain.trading.service.OrderService
-import io.github.mrjimin.invest.domain.trading.service.TradingQueryService
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -39,6 +38,10 @@ fun Route.orderRoute(
                 call.respond(
                     ApiResponse.success(orders)
                 )
+            }
+
+            get("/pending") {
+
             }
         }
     }
