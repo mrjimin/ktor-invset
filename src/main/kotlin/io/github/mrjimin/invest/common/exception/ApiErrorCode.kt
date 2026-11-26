@@ -75,4 +75,39 @@ enum class ApiErrorCode(
         HttpStatusCode.Conflict,
         "이미 존재하는 종목 코드입니다."
     ),
+
+    INSUFFICIENT_BALANCE(
+        HttpStatusCode.BadRequest,
+        "주문 가능 금액이 부족합니다."
+    ),
+
+    INSUFFICIENT_HOLDINGS(
+        HttpStatusCode.BadRequest,
+        "매도 가능한 보유 수량이 부족합니다."
+    ),
+
+    STOCK_NOT_LISTED(
+        HttpStatusCode.BadRequest,
+        "현재 거래할 수 없는 종목입니다."
+    ),
+
+    ORDER_NOT_FOUND(
+        HttpStatusCode.NotFound,
+        "주문을 찾을 수 없습니다."
+    ),
+
+    INVALID_ORDER_QUANTITY(
+        HttpStatusCode.BadRequest,
+        "주문 수량이 올바르지 않습니다."
+    ),
+
+    ORDER_ALREADY_PROCESSED(
+        HttpStatusCode.Conflict,
+        "이미 처리된 주문입니다."
+    ),
+
+    INVALID_STOCK_PRICE(
+        HttpStatusCode.BadRequest,
+        "주가가 올바르지 않습니다."
+    ),
 }

@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.user.service
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
 import io.github.mrjimin.invest.common.security.PasswordEncoder
@@ -19,51 +20,79 @@ class UserServiceImpl(
     private val passwordEncoder: PasswordEncoder
 ) : UserService {
 
-    override suspend fun getAllUsers(): List<User> =
-        userRepository.findAll()
-
-    override suspend fun getUserById(id: Long): User =
-        userRepository.findById(id)
-            ?: throw ApiException(ApiErrorCode.USER_NOT_FOUND)
-
-    override suspend fun getUserByUsername(username: String): User =
-        userRepository.findByUsername(username)
-            ?: throw ApiException(ApiErrorCode.USER_NOT_FOUND)
-
-    override suspend fun registerUser(request: CreateUserRequest): User {
-        val username = request.username.trim()
-        val nickname = request.nickname.trim()
-
-        validateUserInput(username, request.password, nickname)
-        checkUsernameDuplicate(username)
-
-        val studentNumber = validateStudentNumber(request.type, request.studentNumber)
-        if (studentNumber != null) {
-            checkStudentNumberDuplicate(studentNumber)
+    override fun getAllUsers(): List<User> =
+        withTransaction {
+            userRepository.findAll()
         }
 
-        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+    override fun getUserById(id: Long): User =
+        withTransaction {
+            userRepository.findById(id)
+                ?: throw ApiException(ApiErrorCode.USER_NOT_FOUND)
+        }
 
-        val user = User(
-            id = 0L,
-            username = username,
-            password = passwordEncoder.encode(request.password),
-            nickname = nickname,
-            type = request.type,
-            role = UserRole.USER,
-            studentNumber = studentNumber,
-            createdAt = now,
-            updatedAt = now
-        )
+    override fun getUserByUsername(username: String): User =
+        withTransaction {
+            userRepository.findByUsername(username.trim())
+                ?: throw ApiException(ApiErrorCode.USER_NOT_FOUND)
+        }
 
-        return userRepository.save(user)
-    }
+    override fun registerUser(request: CreateUserRequest): User =
+        withTransaction {
+            val username = request.username.trim()
+            val nickname = request.nickname.trim()
 
-    override suspend fun deleteUser(id: Long) {
-        val deleted = userRepository.deleteById(id)
+            validateUserInput(
+                username = username,
+                password = request.password,
+                nickname = nickname
+            )
 
-        if (!deleted) {
-            throw ApiException(ApiErrorCode.USER_NOT_FOUND)
+            val studentNumber = validateStudentNumber(
+                request.type,
+                request.studentNumber
+            )
+
+            if (userRepository.existsByUsername(username)) {
+                throw ApiException(
+                    ApiErrorCode.USERNAME_ALREADY_EXISTS
+                )
+            }
+
+            if (
+                studentNumber != null &&
+                userRepository.existsByStudentNumber(studentNumber)
+            ) {
+                throw ApiException(
+                    ApiErrorCode.STUDENT_NUMBER_ALREADY_EXISTS
+                )
+            }
+
+            val now = Clock.System.now()
+                .toLocalDateTime(TimeZone.UTC)
+
+            val user = User(
+                id = 0L,
+                username = username,
+                password = passwordEncoder.encode(request.password),
+                nickname = nickname,
+                type = request.type,
+                role = UserRole.USER,
+                studentNumber = studentNumber,
+                createdAt = now,
+                updatedAt = now
+            )
+
+            userRepository.save(user)
+        }
+
+    override fun deleteUser(id: Long) {
+        withTransaction {
+            val deleted = userRepository.deleteById(id)
+
+            if (!deleted) {
+                throw ApiException(ApiErrorCode.USER_NOT_FOUND)
+            }
         }
     }
 
@@ -73,15 +102,24 @@ class UserServiceImpl(
         nickname: String
     ) {
         if (username.isBlank() || username.length > 50) {
-            throw ApiException(ApiErrorCode.INVALID_REQUEST)
+            throw ApiException(
+                ApiErrorCode.INVALID_REQUEST,
+                "아이디는 1~50자여야 합니다."
+            )
         }
 
         if (password.length !in 8..72) {
-            throw ApiException(ApiErrorCode.INVALID_REQUEST)
+            throw ApiException(
+                ApiErrorCode.INVALID_REQUEST,
+                "비밀번호는 8~72자여야 합니다."
+            )
         }
 
         if (nickname.isBlank() || nickname.length > 50) {
-            throw ApiException(ApiErrorCode.INVALID_REQUEST)
+            throw ApiException(
+                ApiErrorCode.INVALID_REQUEST,
+                "닉네임은 1~50자여야 합니다."
+            )
         }
     }
 
@@ -91,35 +129,27 @@ class UserServiceImpl(
     ): StudentNumber? {
         if (type == UserType.TEACHER) {
             if (!value.isNullOrBlank()) {
-                throw ApiException(ApiErrorCode.INVALID_REQUEST)
+                throw ApiException(
+                    ApiErrorCode.INVALID_REQUEST,
+                    "교사는 학번을 입력할 수 없습니다."
+                )
             }
 
             return null
         }
 
-        val studentNumber = try {
-            value?.trim()
-                ?.takeIf { it.isNotBlank() }
-                ?.toStudentNumber()
-                ?: throw ApiException(ApiErrorCode.STUDENT_NUMBER_REQUIRED)
+        val normalized = value?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: throw ApiException(
+                ApiErrorCode.STUDENT_NUMBER_REQUIRED
+            )
+
+        return try {
+            normalized.toStudentNumber()
         } catch (_: IllegalArgumentException) {
             throw ApiException(
                 ApiErrorCode.INVALID_STUDENT_NUMBER
             )
-        }
-
-        return studentNumber
-    }
-
-    private suspend fun checkUsernameDuplicate(username: String) {
-        if (userRepository.existsByUsername(username)) {
-            throw ApiException(ApiErrorCode.USERNAME_ALREADY_EXISTS)
-        }
-    }
-
-    private suspend fun checkStudentNumberDuplicate(studentNumber: StudentNumber) {
-        if (userRepository.existsByStudentNumber(studentNumber)) {
-            throw ApiException(ApiErrorCode.STUDENT_NUMBER_ALREADY_EXISTS)
         }
     }
 }

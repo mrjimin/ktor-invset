@@ -1,7 +1,9 @@
 package io.github.mrjimin.invest.domain.account.service
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
+import io.github.mrjimin.invest.common.time.TimeProvider
 import io.github.mrjimin.invest.domain.account.config.AccountPolicy
 import io.github.mrjimin.invest.domain.account.model.Account
 import io.github.mrjimin.invest.domain.account.repository.AccountRepository
@@ -10,11 +12,13 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 class AccountServiceImpl(
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val timeProvider: TimeProvider
 ) : AccountService {
 
-    override suspend fun createAccount(userId: Long): Account {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+    override fun createAccount(userId: Long): Account {
+        val now = timeProvider.nowUtc()
+
         val account = Account(
             id = 0L,
             userId = userId,
@@ -24,10 +28,11 @@ class AccountServiceImpl(
             createdAt = now,
             updatedAt = now,
         )
+
         return accountRepository.save(account)
     }
 
-    override suspend fun getAccountByUserId(userId: Long): Account =
+    override fun getAccountByUserId(userId: Long): Account =
         accountRepository.findByUserId(userId)
             ?: throw ApiException(ApiErrorCode.ACCOUNT_NOT_FOUND)
 }

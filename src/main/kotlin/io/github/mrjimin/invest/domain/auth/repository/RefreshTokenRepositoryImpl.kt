@@ -1,6 +1,6 @@
 package io.github.mrjimin.invest.domain.auth.repository
 
-import io.github.mrjimin.invest.common.database.dbQuery
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.domain.auth.model.RefreshToken
 import io.github.mrjimin.invest.domain.auth.repository.table.RefreshTokens
 import kotlinx.datetime.LocalDateTime
@@ -9,21 +9,22 @@ import org.jetbrains.exposed.v1.jdbc.*
 
 class RefreshTokenRepositoryImpl : RefreshTokenRepository {
 
-    override suspend fun save(refreshToken: RefreshToken): Unit = dbQuery {
-        RefreshTokens.insert {
-            it[userId] = refreshToken.userId
-            it[tokenHash] = refreshToken.tokenHash
-            it[expiresAt] = refreshToken.expiresAt
-            it[createdAt] = refreshToken.createdAt
+    override fun save(refreshToken: RefreshToken): Unit =
+        withTransaction {
+            RefreshTokens.insert {
+                it[userId] = refreshToken.userId
+                it[tokenHash] = refreshToken.tokenHash
+                it[expiresAt] = refreshToken.expiresAt
+                it[createdAt] = refreshToken.createdAt
+            }
         }
-    }
 
-    override suspend fun rotate(
+    override fun rotate(
         userId: Long,
         tokenHash: String,
         now: LocalDateTime,
         newToken: RefreshToken
-    ): Boolean = dbQuery {
+    ): Boolean = withTransaction {
         val deleted = RefreshTokens.deleteWhere {
             (RefreshTokens.userId eq userId) and
                     (RefreshTokens.tokenHash eq tokenHash) and
@@ -31,7 +32,7 @@ class RefreshTokenRepositoryImpl : RefreshTokenRepository {
         }
 
         if (deleted != 1) {
-            return@dbQuery false
+            return@withTransaction false
         }
 
         RefreshTokens.insert {
@@ -44,15 +45,17 @@ class RefreshTokenRepositoryImpl : RefreshTokenRepository {
         true
     }
 
-    override suspend fun deleteByUserId(userId: Long): Int = dbQuery {
-        RefreshTokens.deleteWhere {
-            RefreshTokens.userId eq userId
+    override fun deleteByUserId(userId: Long): Int =
+        withTransaction {
+            RefreshTokens.deleteWhere {
+                RefreshTokens.userId eq userId
+            }
         }
-    }
 
-    override suspend fun deleteExpiredTokens(now: LocalDateTime): Int = dbQuery {
-        RefreshTokens.deleteWhere {
-            RefreshTokens.expiresAt lessEq now
+    override fun deleteExpiredTokens(now: LocalDateTime): Int =
+        withTransaction {
+            RefreshTokens.deleteWhere {
+                RefreshTokens.expiresAt lessEq now
+            }
         }
-    }
 }

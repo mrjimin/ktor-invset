@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.auth.service
 
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
 import io.github.mrjimin.invest.common.security.PasswordEncoder
@@ -27,13 +28,16 @@ class AuthServiceImpl(
     private val refreshTokenRepository: RefreshTokenRepository
 ) : AuthService {
 
-    override suspend fun signup(request: CreateUserRequest): TokenResponse {
-        val user = userService.registerUser(request)
-        accountService.createAccount(user.id)
-        return issueTokens(user)
-    }
+    override fun signup(request: CreateUserRequest): TokenResponse =
+        withTransaction {
+            val user = userService.registerUser(request)
 
-    override suspend fun login(request: LoginRequest): TokenResponse {
+            accountService.createAccount(user.id)
+
+            issueTokens(user)
+        }
+
+    override fun login(request: LoginRequest): TokenResponse {
         val user = userService.getUserByUsername(
             request.username.trim()
         )
@@ -45,34 +49,34 @@ class AuthServiceImpl(
         return issueTokens(user)
     }
 
-    override suspend fun refresh(refreshToken: String): TokenResponse {
-        val decoded = jwtProvider.verifyRefreshToken(refreshToken)
-            ?: throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
+    override fun refresh(refreshToken: String): TokenResponse =
+        withTransaction {
+            val decoded = jwtProvider.verifyRefreshToken(refreshToken)
+                ?: throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
 
-        val userId = decoded.subject?.toLongOrNull()
-            ?: throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
+            val userId = decoded.subject?.toLongOrNull()
+                ?: throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
 
-        val user = userService.getUserById(userId)
+            val user = userService.getUserById(userId)
 
-        val now = Clock.System.now()
+            val now = Clock.System.now()
+            val bundle = createTokenBundle(user, now)
 
-        val bundle = createTokenBundle(user, now)
+            val rotated = refreshTokenRepository.rotate(
+                userId = userId,
+                tokenHash = RefreshTokenHasher.hash(refreshToken),
+                now = now.toLocalDateTime(TimeZone.UTC),
+                newToken = bundle.refreshToken
+            )
 
-        val rotated = refreshTokenRepository.rotate(
-            userId = userId,
-            tokenHash = RefreshTokenHasher.hash(refreshToken),
-            now = now.toLocalDateTime(TimeZone.UTC),
-            newToken = bundle.refreshToken
-        )
+            if (!rotated) {
+                throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
+            }
 
-        if (!rotated) {
-            throw ApiException(ApiErrorCode.INVALID_REFRESH_TOKEN)
+            bundle.response
         }
 
-        return bundle.response
-    }
-
-    private suspend fun issueTokens(user: User): TokenResponse {
+    private fun issueTokens(user: User): TokenResponse {
         val now = Clock.System.now()
         val bundle = createTokenBundle(user, now)
 

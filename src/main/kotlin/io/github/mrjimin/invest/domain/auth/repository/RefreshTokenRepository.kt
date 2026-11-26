@@ -5,16 +5,16 @@ import kotlinx.datetime.LocalDateTime
 
 interface RefreshTokenRepository {
 
-    suspend fun save(refreshToken: RefreshToken)
+    fun save(refreshToken: RefreshToken)
 
-    suspend fun rotate(
+    fun rotate(
         userId: Long,
         tokenHash: String,
         now: LocalDateTime,
         newToken: RefreshToken
     ): Boolean
 
-    suspend fun deleteByUserId(userId: Long): Int
+    fun deleteByUserId(userId: Long): Int
 
-    suspend fun deleteExpiredTokens(now: LocalDateTime): Int
+    fun deleteExpiredTokens(now: LocalDateTime): Int
 }

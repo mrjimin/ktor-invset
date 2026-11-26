@@ -2,6 +2,7 @@ package io.github.mrjimin.invest.common.security.role
 
 import io.github.mrjimin.invest.common.exception.ApiErrorCode
 import io.github.mrjimin.invest.common.exception.ApiException
+import io.github.mrjimin.invest.common.extension.jwtPrincipal
 import io.github.mrjimin.invest.common.security.jwt.JwtPrincipal
 import io.github.mrjimin.invest.domain.user.model.UserRole
 import io.github.mrjimin.invest.plugin.JWT_AUTH
@@ -34,9 +35,7 @@ private val RoleAuthorizationPlugin = createRouteScopedPlugin(
     val roles = pluginConfig.roles
 
     on(AuthenticationChecked) { call ->
-        val principal = call.principal<JwtPrincipal>()
-            ?: throw ApiException(ApiErrorCode.UNAUTHORIZED)
-
+        val principal = call.jwtPrincipal()
         if (!principal.hasAnyRole(*roles.toTypedArray())) {
             throw ApiException(ApiErrorCode.FORBIDDEN)
         }

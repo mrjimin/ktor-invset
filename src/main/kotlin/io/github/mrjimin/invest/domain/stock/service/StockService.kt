@@ -5,12 +5,12 @@ import io.github.mrjimin.invest.domain.stock.dto.UpdateStockRequest
 import io.github.mrjimin.invest.domain.stock.model.Stock
 
 interface StockService {
-    suspend fun getAllStocks(onlyListed: Boolean = true): List<Stock>
-    suspend fun getStockById(id: Long): Stock
+    fun getAllStocks(onlyListed: Boolean = true): List<Stock>
+    fun getStockById(id: Long): Stock
 
-    suspend fun createStock(request: CreateStockRequest): Stock
+    fun createStock(request: CreateStockRequest): Stock
 
-    suspend fun updateStock(id: Long, request: UpdateStockRequest): Stock
+    fun updateStock(id: Long, request: UpdateStockRequest): Stock
 
-    suspend fun deleteStock(id: Long)
+    fun deleteStock(id: Long)
 }

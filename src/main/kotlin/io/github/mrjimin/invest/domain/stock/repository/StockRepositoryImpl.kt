@@ -1,6 +1,6 @@
 package io.github.mrjimin.invest.domain.stock.repository
 
-import io.github.mrjimin.invest.common.database.dbQuery
+import io.github.mrjimin.invest.common.database.withTransaction
 import io.github.mrjimin.invest.domain.stock.model.Stock
 import io.github.mrjimin.invest.domain.stock.repository.table.Stocks
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -12,63 +12,76 @@ import org.jetbrains.exposed.v1.jdbc.update
 
 class StockRepositoryImpl : StockRepository {
 
-    override suspend fun findAll(onlyListed: Boolean): List<Stock> = dbQuery {
+    override fun findAll(onlyListed: Boolean): List<Stock> = withTransaction {
         val query = Stocks.selectAll()
+
         if (onlyListed) {
             query.where { Stocks.listed eq true }
         }
+
         query.map { it.toStock() }
     }
 
-    override suspend fun findById(id: Long): Stock? = dbQuery {
-        findByIdInternal(id)
-    }
-
-    override suspend fun findByCode(code: String): Stock? = dbQuery {
-        Stocks.selectAll()
-            .where { Stocks.code eq code }
-            .singleOrNull()
-            ?.toStock()
-    }
-
-    override suspend fun existsByCode(code: String): Boolean = dbQuery {
-        Stocks.selectAll()
-            .where { Stocks.code eq code }
-            .limit(1)
-            .any()
-    }
-
-    override suspend fun save(stock: Stock): Stock = dbQuery {
-        val stockId = Stocks.insertAndGetId {
-            it[code] = stock.code
-            it[name] = stock.name
-            it[description] = stock.description
-            it[currentPrice] = stock.currentPrice
-            it[previousClose] = stock.previousClose
-            it[listed] = stock.listed
-            it[createdAt] = stock.createdAt
-            it[updatedAt] = stock.updatedAt
-        }.value
-
-        findByIdInternal(stockId)
-            ?: error("생성된 종목을 조회할 수 없습니다.")
-    }
-
-    override suspend fun update(stock: Stock): Stock = dbQuery {
-        Stocks.update({ Stocks.id eq stock.id }) {
-            it[name] = stock.name
-            it[description] = stock.description
-            it[listed] = stock.listed
-            it[updatedAt] = stock.updatedAt
+    override fun findById(id: Long): Stock? =
+        withTransaction {
+            findByIdInternal(id)
         }
 
-        findByIdInternal(stock.id)
-            ?: error("수정된 종목을 조회할 수 없습니다.")
-    }
+    override fun findByCode(code: String): Stock? =
+        withTransaction {
+            Stocks.selectAll()
+                .where { Stocks.code eq code }
+                .singleOrNull()
+                ?.toStock()
+        }
 
-    override suspend fun deleteById(id: Long): Boolean = dbQuery {
-        Stocks.deleteWhere { Stocks.id eq id } > 0
-    }
+    override fun existsByCode(code: String): Boolean =
+        withTransaction {
+            Stocks.selectAll()
+                .where { Stocks.code eq code }
+                .limit(1)
+                .any()
+        }
+
+    override fun save(stock: Stock): Stock =
+        withTransaction {
+            val stockId = Stocks.insertAndGetId {
+                it[code] = stock.code
+                it[name] = stock.name
+                it[description] = stock.description
+                it[currentPrice] = stock.currentPrice
+                it[previousClose] = stock.previousClose
+                it[listed] = stock.listed
+                it[createdAt] = stock.createdAt
+                it[updatedAt] = stock.updatedAt
+            }.value
+
+            findByIdInternal(stockId)
+                ?: error("생성된 종목을 조회할 수 없습니다.")
+        }
+
+    override fun update(stock: Stock): Stock =
+        withTransaction {
+            val updatedCount = Stocks.update({
+                Stocks.id eq stock.id
+            }) {
+                it[name] = stock.name
+                it[description] = stock.description
+                it[listed] = stock.listed
+                it[updatedAt] = stock.updatedAt
+            }
+
+            if (updatedCount == 0) {
+                error("수정할 종목을 찾을 수 없습니다. stockId=${stock.id}")
+            }
+
+            findByIdInternal(stock.id)
+                ?: error("수정된 종목을 조회할 수 없습니다.")
+        }
+
+//    override fun deleteById(id: Long): Boolean = withTransaction {
+//        Stocks.deleteWhere { Stocks.id eq id } > 0
+//    }
 
     private fun findByIdInternal(id: Long): Stock? =
         Stocks.selectAll()

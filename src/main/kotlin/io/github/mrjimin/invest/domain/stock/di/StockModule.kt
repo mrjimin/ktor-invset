@@ -12,6 +12,6 @@ val stockModule = module {
     }
 
     single<StockService> {
-        StockServiceImpl(get())
+        StockServiceImpl(get(), get())
     }
 }

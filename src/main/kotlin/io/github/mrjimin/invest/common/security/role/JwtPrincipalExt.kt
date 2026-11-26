@@ -1,4 +1,3 @@
-
 package io.github.mrjimin.invest.common.security.role
 
 import io.github.mrjimin.invest.common.security.jwt.JwtPrincipal

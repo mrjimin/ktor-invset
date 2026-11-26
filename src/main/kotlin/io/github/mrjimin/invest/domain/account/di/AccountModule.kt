@@ -12,6 +12,6 @@ val accountModule = module {
     }
 
     single<AccountService> {
-        AccountServiceImpl(get())
+        AccountServiceImpl(get(), get())
     }
 }

@@ -5,6 +5,7 @@ import io.github.mrjimin.invest.common.security.di.securityModule
 import io.github.mrjimin.invest.domain.account.di.accountModule
 import io.github.mrjimin.invest.domain.auth.di.authModule
 import io.github.mrjimin.invest.domain.stock.di.stockModule
+import io.github.mrjimin.invest.domain.trading.di.tradingModule
 import io.github.mrjimin.invest.domain.user.di.userModule
 import io.ktor.server.application.*
 import io.ktor.server.config.*
@@ -23,7 +24,8 @@ fun Application.configureKoin() {
             userModule,
             authModule,
             accountModule,
-            stockModule
+            stockModule,
+            tradingModule
         )
     }
 }

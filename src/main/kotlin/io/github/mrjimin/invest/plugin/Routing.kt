@@ -6,6 +6,11 @@ import io.github.mrjimin.invest.domain.auth.route.authRoute
 import io.github.mrjimin.invest.domain.auth.service.AuthService
 import io.github.mrjimin.invest.domain.stock.route.stockRoute
 import io.github.mrjimin.invest.domain.stock.service.StockService
+import io.github.mrjimin.invest.domain.trading.route.holdingRoute
+import io.github.mrjimin.invest.domain.trading.route.orderRoute
+import io.github.mrjimin.invest.domain.trading.route.transactionRoute
+import io.github.mrjimin.invest.domain.trading.service.OrderService
+import io.github.mrjimin.invest.domain.trading.service.TradingQueryService
 import io.github.mrjimin.invest.domain.user.route.userRoute
 import io.github.mrjimin.invest.domain.user.service.UserService
 import io.ktor.server.application.*
@@ -18,6 +23,8 @@ fun Application.configureRouting() {
     val authService by inject<AuthService>()
     val accountService by inject<AccountService>()
     val stockService by inject<StockService>()
+    val orderService by inject<OrderService>()
+    val tradingQueryService by inject<TradingQueryService>()
 
     routing {
         get("/health") { call.respondText("OK") }
@@ -27,6 +34,10 @@ fun Application.configureRouting() {
             userRoute(userService)
             accountRoute(accountService)
             stockRoute(stockService)
+
+            orderRoute(orderService)
+            holdingRoute(tradingQueryService)
+            transactionRoute(tradingQueryService)
         }
     }
 }

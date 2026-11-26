@@ -1,5 +1,6 @@
 package io.github.mrjimin.invest.domain.user.route
 
+import io.github.mrjimin.invest.common.extension.jwtPrincipal
 import io.github.mrjimin.invest.common.response.ApiResponse
 import io.github.mrjimin.invest.common.security.jwt.JwtPrincipal
 import io.github.mrjimin.invest.common.security.role.authenticated
@@ -15,9 +16,7 @@ fun Route.userRoute(
     authenticated {
         route("/users") {
             get("/me") {
-                val principal = call.principal<JwtPrincipal>()
-                    ?: return@get
-
+                val principal = call.jwtPrincipal()
                 val user = userService.getUserById(principal.userId)
 
                 call.respond(
