@@ -4,5 +4,5 @@ enum class OrderStatus {
     PENDING,
     FILLED,
     REJECTED,
-    CANCELLED
+    CANCELED
 }

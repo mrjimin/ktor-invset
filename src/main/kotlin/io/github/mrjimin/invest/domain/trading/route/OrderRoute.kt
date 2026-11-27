@@ -1,5 +1,7 @@
 package io.github.mrjimin.invest.domain.trading.route
 
+import io.github.mrjimin.invest.common.exception.ApiErrorCode
+import io.github.mrjimin.invest.common.exception.ApiException
 import io.github.mrjimin.invest.common.extension.jwtPrincipal
 import io.github.mrjimin.invest.common.response.ApiResponse
 import io.github.mrjimin.invest.common.security.role.authenticated
@@ -37,6 +39,24 @@ fun Route.orderRoute(
 
                 call.respond(
                     ApiResponse.success(orders)
+                )
+            }
+
+            delete("/{orderId}") {
+                val orderId = call.parameters["orderId"]?.toLongOrNull()
+                    ?: throw ApiException(
+                        ApiErrorCode.INVALID_REQUEST,
+                        "올바른 주문 ID가 아닙니다."
+                    )
+
+                val principal = call.jwtPrincipal()
+                val response = orderService.cancelOrder(principal.userId, orderId)
+
+                call.respond(
+                    ApiResponse.success(
+                        response,
+                        "주문이 취소되었습니다."
+                    )
                 )
             }
 

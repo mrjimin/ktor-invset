@@ -20,3 +20,7 @@ ALTER TABLE orders
 
 CREATE INDEX idx_orders_user_status_created_at
     ON orders (user_id, status, created_at DESC);
+
+ALTER TABLE transactions
+    ADD COLUMN fee_amount BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN tax_amount BIGINT NOT NULL DEFAULT 0;

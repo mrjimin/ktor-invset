@@ -12,4 +12,9 @@ interface OrderService {
     fun getMyOrders(userId: Long): List<OrderResponse>
 
     fun executePendingOrders(): Int
+
+    fun cancelOrder(
+        userId: Long,
+        orderId: Long
+    ): OrderResponse
 }

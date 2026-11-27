@@ -1,6 +1,7 @@
 package io.github.mrjimin.invest
 
 import io.github.mrjimin.invest.common.database.configureDatabase
+import io.github.mrjimin.invest.domain.trading.configureTradingScheduler
 import io.github.mrjimin.invest.plugin.*
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
@@ -17,4 +18,5 @@ fun Application.module() {
     configureStatusPages()
     configureWebsockets()
     configureRouting()
+    configureTradingScheduler()
 }

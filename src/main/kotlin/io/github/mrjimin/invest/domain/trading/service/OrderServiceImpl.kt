@@ -10,6 +10,7 @@ class OrderServiceImpl internal constructor(
     private val orderRepository: OrderRepository,
     private val placementProcessor: OrderPlacementProcessor,
     private val pendingOrderProcessor: PendingOrderProcessor,
+    private val cancellationProcessor: OrderCancellationProcessor,
 ) : OrderService {
 
     override fun placeOrder(
@@ -26,4 +27,12 @@ class OrderServiceImpl internal constructor(
 
     override fun executePendingOrders(): Int =
         pendingOrderProcessor.executePendingOrders()
+
+    override fun cancelOrder(
+        userId: Long,
+        orderId: Long
+    ): OrderResponse = withTransaction {
+        cancellationProcessor.cancelOrder(userId, orderId)
+            .toResponse()
+    }
 }

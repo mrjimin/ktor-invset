@@ -29,6 +29,14 @@ val tradingModule = module {
         TransactionRepositoryImpl()
     }
 
+    single<TaxRepository> {
+        TaxRepositoryImpl()
+    }
+
+    single {
+        TradingFeeCalculator()
+    }
+
     single {
         HoldingProcessor(get())
     }
@@ -40,9 +48,11 @@ val tradingModule = module {
             holdingRepository = get(),
             orderRepository = get(),
             transactionRepository = get(),
+            taxRepository = get(),
             timeProvider = get(),
             tradingCalendar = get(),
-            holdingProcessor = get()
+            holdingProcessor = get(),
+            tradingFeeCalculator = get()
         )
     }
 
@@ -52,18 +62,37 @@ val tradingModule = module {
             stockRepository = get(),
             orderRepository = get(),
             transactionRepository = get(),
+            taxRepository = get(),
             timeProvider = get(),
             tradingCalendar = get(),
             holdingProcessor = get(),
-            holdingRepository = get()
+            holdingRepository = get(),
+            tradingFeeCalculator = get()
+        )
+    }
+
+    single {
+        OrderCancellationProcessor(
+            accountRepository = get(),
+            orderRepository = get(),
+            timeProvider = get()
         )
     }
 
     single<OrderService> {
-        OrderServiceImpl(get(), get(), get())
+        OrderServiceImpl(
+            orderRepository = get(),
+            placementProcessor = get(),
+            pendingOrderProcessor = get(),
+            cancellationProcessor = get()
+        )
     }
 
     single<TradingQueryService> {
         TradingQueryServiceImpl(get(), get())
+    }
+
+    single {
+        TradingScheduler(get())
     }
 }

@@ -11,5 +11,7 @@ data class Transaction(
     val quantity: Int,
     val price: Long,
     val totalAmount: Long,
-    val createdAt: LocalDateTime,
+    val feeAmount: Long,
+    val taxAmount: Long,
+    val createdAt: LocalDateTime
 )

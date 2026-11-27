@@ -17,6 +17,9 @@ interface OrderRepository {
         id: Long,
         status: OrderStatus,
         executedPrice: Long?,
-        executedAt: LocalDateTime
+        executedAt: LocalDateTime?,
+        cancelledAt: LocalDateTime? = null,
+        feeAmount: Long = 0L,
+        taxAmount: Long = 0L
     ): Boolean
 }

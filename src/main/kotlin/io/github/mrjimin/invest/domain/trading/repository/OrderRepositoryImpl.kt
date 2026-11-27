@@ -25,8 +25,16 @@ class OrderRepositoryImpl : OrderRepository {
                 it[requestedPrice] = order.requestedPrice
                 it[executedPrice] = order.executedPrice
                 it[status] = order.status
+
+                it[reservedAmount] = order.reservedAmount
+                it[feeRate] = order.feeRate
+                it[taxRate] = order.taxRate
+                it[feeAmount] = order.feeAmount
+                it[taxAmount] = order.taxAmount
+
                 it[createdAt] = order.createdAt
                 it[executedAt] = order.executedAt
+                it[cancelledAt] = order.cancelledAt
             }.value
 
             order.copy(id = id)
@@ -73,7 +81,10 @@ class OrderRepositoryImpl : OrderRepository {
         id: Long,
         status: OrderStatus,
         executedPrice: Long?,
-        executedAt: LocalDateTime
+        executedAt: LocalDateTime?,
+        cancelledAt: LocalDateTime?,
+        feeAmount: Long,
+        taxAmount: Long
     ): Boolean = withTransaction {
         Orders.update({
             (Orders.id eq id) and
@@ -82,6 +93,9 @@ class OrderRepositoryImpl : OrderRepository {
             it[Orders.status] = status
             it[Orders.executedPrice] = executedPrice
             it[Orders.executedAt] = executedAt
+            it[Orders.cancelledAt] = cancelledAt
+            it[Orders.feeAmount] = feeAmount
+            it[Orders.taxAmount] = taxAmount
         } > 0
     }
 
@@ -94,7 +108,15 @@ class OrderRepositoryImpl : OrderRepository {
         requestedPrice = this[Orders.requestedPrice],
         executedPrice = this[Orders.executedPrice],
         status = this[Orders.status],
+
+        reservedAmount = this[Orders.reservedAmount],
+        feeRate = this[Orders.feeRate],
+        taxRate = this[Orders.taxRate],
+        feeAmount = this[Orders.feeAmount],
+        taxAmount = this[Orders.taxAmount],
+
         createdAt = this[Orders.createdAt],
         executedAt = this[Orders.executedAt],
+        cancelledAt = this[Orders.cancelledAt]
     )
 }

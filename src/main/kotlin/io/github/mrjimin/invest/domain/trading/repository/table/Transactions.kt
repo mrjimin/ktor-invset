@@ -15,5 +15,7 @@ object Transactions : LongIdTable("transactions") {
     val quantity = integer("quantity")
     val price = long("price")
     val totalAmount = long("total_amount")
+    val feeAmount = long("fee_amount").default(0L)
+    val taxAmount = long("tax_amount").default(0L)
     val createdAt = datetime("created_at")
 }

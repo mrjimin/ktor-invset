@@ -14,8 +14,10 @@ data class OrderResponse(
     val requestedPrice: Long,
     val executedPrice: Long?,
     val status: OrderStatus,
+    val feeAmount: Long,
+    val taxAmount: Long,
     val createdAt: String,
-    val executedAt: String?,
+    val executedAt: String?
 )
 
 fun Order.toResponse() = OrderResponse(
@@ -26,6 +28,8 @@ fun Order.toResponse() = OrderResponse(
     requestedPrice = requestedPrice,
     executedPrice = executedPrice,
     status = status,
+    feeAmount = feeAmount,
+    taxAmount = taxAmount,
     createdAt = createdAt.toString(),
-    executedAt = executedAt?.toString(),
+    executedAt = executedAt?.toString()
 )
