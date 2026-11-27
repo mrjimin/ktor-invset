@@ -1,24 +1,16 @@
-### Example user template template
-### Example user template
 
-# IntelliJ project files
-.idea
+### IntelliJ IDEA
+.idea/
 *.iml
-out
-gen
-### macOS template
-# General
+out/
+gen/
+
+### macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Icon must end with two \r
 Icon
-
-# Thumbnails
 ._*
-
-# Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
 .Spotlight-V100
@@ -26,28 +18,39 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
 
-### Kotlin template
-# Compiled class file
+### Kotlin / Java
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
 *.ctxt
+*.log
+hs_err_pid*
+replay_pid*
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+### Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Package Files #
+### Kotlin Multiplatform (if applicable)
+.kotlin/
+**/build/
+
+### Ktor
+logs/
+application-local.conf
+application-dev.conf
+
+### Environment Variables
+.env
+.env.*
+!.env.example
+
+### Compiled / Packaged Files
 *.jar
 *.war
 *.nar
@@ -56,10 +59,13 @@ Temporary Items
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+### Temporary Files
+*.tmp
+*.swp
+*.swo
+*~
 
-.env
-.env.*
-!.env.example
+### Test Reports / Coverage
+**/test-results/
+**/reports/
+coverage/
